@@ -14,6 +14,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.base import CallbackManager
 from langchain.embeddings import HuggingFaceEmbeddings
+import openai
+
+openai_api_key = os.environ.get("OPENAI_API_KEY")  
+openai.api_key = openai_api_key
 
 
 st.set_page_config(page_title="PDF Analyzer",page_icon=':shark:')
@@ -200,20 +204,6 @@ def main():
     # Use RecursiveCharacterTextSplitter as the default and only text splitter
     splitter_type = "RecursiveCharacterTextSplitter"
 
-    if 'openai_api_key' not in st.session_state:
-        openai_api_key = st.text_input(
-            'Please enter your OpenAI API key or [get one here](https://platform.openai.com/account/api-keys)', value="", placeholder="Enter the OpenAI API key which begins with sk-")
-        if openai_api_key:
-            st.session_state.openai_api_key = openai_api_key
-            os.environ["OPENAI_API_KEY"] = openai_api_key
-        else:
-            #warning_text = 'Please enter your OpenAI API key. Get yours from here: [link](https://platform.openai.com/account/api-keys)'
-            #warning_html = f'<span>{warning_text}</span>'
-            #st.markdown(warning_html, unsafe_allow_html=True)
-            return
-    else:
-        os.environ["OPENAI_API_KEY"] = st.session_state.openai_api_key
-
     uploaded_files = st.file_uploader("Upload a PDF or TXT Document", type=[
                                       "pdf", "txt"], accept_multiple_files=True)
 
@@ -239,10 +229,12 @@ def main():
         # Embed using OpenAI embeddings
             # Embed using OpenAI embeddings or HuggingFace embeddings
         if embedding_option == "OpenAI Embeddings":
-            embeddings = OpenAIEmbeddings()
+            openai_api_key = os.environ.get("OPENAI_API_KEY")  # Fetch the API key from the environment variable
+            embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
         elif embedding_option == "HuggingFace Embeddings(slower)":
             # Replace "bert-base-uncased" with the desired HuggingFace model
             embeddings = HuggingFaceEmbeddings()
+
 
         retriever = create_retriever(embeddings, splits, retriever_type)
 
@@ -285,5 +277,25 @@ def main():
             st.write("Answer:", answer)
 
 
+# ... (previous imports and code)
+
+def set_openai_api_key():
+    # Fetch the API key from the environment variable or ask the user to input it
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    if not openai_api_key:
+        openai_api_key = st.text_input("Enter your OpenAI API key:")
+    if openai_api_key:
+        os.environ["OPENAI_API_KEY"] = openai_api_key
+        print(f"OpenAI API key set: {openai_api_key}")
+        return True
+    return False
+
+
 if __name__ == "__main__":
-    main()
+    # Check if the API key is set. If not, ask the user to input it.
+    if not set_openai_api_key():
+        st.error("OpenAI API key not provided. Please set the API key.")
+    else:
+        main()
+
+
